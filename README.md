@@ -24,4 +24,4 @@ poucas centenas de PDFs por vez. Para milhares, use `desktop/renomeador_em_massa
 PDFs com texto são lidos só no navegador. Em escaneados, só a imagem do cabeçalho da 1ª página é enviada.
 
 ## Erro 404 ao ler o cabeçalho
-A função não foi publicada. Confira se `api/ler-cabecalho.js` está na raiz do repositório (não dentro de outra pasta) e se não há `vercel.json` no projeto. Abrir `https://SEU-SITE.vercel.app/api/ler-cabecalho` no navegador deve mostrar `{"error":"método não permitido"}`.
+A função não foi publicada. Confira se `api/ler-cabecalho.js` está na raiz do repositório (não dentro de outra pasta) e se não há `vercel.json` no projeto. Abrir `https://SEU-SITE.vercel.app/api/ler-cabecalho` no navegador deve mostrar `{"ok":true,"ANTHROPIC_API_KEY":true,"APP_PASSWORD":true}`. Se aparecer `false` em algum, falta criar a variável na Vercel e fazer um novo deploy.
