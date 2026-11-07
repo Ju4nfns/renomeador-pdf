@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Renomear PDFs pelo conteúdo</title>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F2F4F3;--card:#fff;--ink:#17212B;--mut:#5A6772;--line:#D3DADF;--acc:#0B5F78;--onacc:#fff;--warn:#8F5200;--ok:#1D6A3B;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11181E;--card:#1A242C;--ink:#E7ECEF;--mut:#98A5AF;--line:#2C3A44;--acc:#5CC3E0;--onacc:#06222C;--warn:#E8B054;--ok:#6CCB8D;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#11181E;--card:#1A242C;--ink:#E7ECEF;--mut:#98A5AF;--line:#2C3A44;--acc:#5CC3E0;--onacc:#06222C;--warn:#E8B054;--ok:#6CCB8D;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:860px;margin:0 auto;padding:28px 18px 56px}
+h1{font-size:clamp(28px,5vw,40px);line-height:1.1;margin:0 0 10px;letter-spacing:-.02em}
+.sub{color:var(--mut);max-width:62ch;margin:0 0 24px}
+.drop{display:block;position:relative;border:2px dashed var(--line);border-radius:10px;padding:28px 18px;text-align:center;background:var(--card);cursor:pointer}
+.drop:hover,.drop.over,.drop:focus-within{border-color:var(--acc)}
+.drop b{display:block}
+.drop span{color:var(--mut);font-size:14px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);opacity:0}
+section{margin-top:26px}
+label.f{display:block;font-weight:600;margin-bottom:6px}
+input[type=text]{width:100%;font:500 15px "JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 12px}
+.chips button{font-size:14px}
+.pri{background:var(--acc);color:var(--onacc);border-color:var(--acc);font-weight:600}
+button:disabled{opacity:.5;cursor:not-allowed}
+.hint{color:var(--mut);font-size:14px;margin:6px 0 0}
+.head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.head h2{font-size:20px;margin:0}
+.acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+ul{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:10px}
+.row{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.old{color:var(--mut);font-size:13px;word-break:break-all}
+.line{display:flex;gap:8px;align-items:center;margin:6px 0}
+.line input{flex:1;min-width:0}
+.ext{font-family:"JetBrains Mono",ui-monospace,monospace;color:var(--mut)}
+.st{font-size:14px}.warn{color:var(--warn)}.ok{color:var(--ok)}
+.row .acts{margin-top:8px}
+.thumb{display:block;max-width:100%;max-height:110px;height:auto;margin:6px 0;border:1px solid var(--line);border-radius:6px;object-fit:contain;object-position:left}
+details{font-size:13px;color:var(--mut);flex:1 1 100%}
+pre{white-space:pre-wrap;word-break:break-word;max-height:160px;overflow:auto;background:var(--bg);padding:8px;border-radius:6px;margin:6px 0 0}
+@media (prefers-reduced-motion:no-preference){.drop{transition:border-color .15s}}
+</style>
+</head>
+<body>
+<main>
+<h1>Renomear PDFs pelo conteúdo</h1>
+<p class="sub">Solte os PDFs, escolha o modelo do nome e baixe tudo renomeado. PDFs com texto são lidos no seu navegador. Em PDFs escaneados, só a imagem do cabeçalho da primeira página é enviada ao Claude para ler o número da NFe.</p>
+
+<label class="drop" id="drop">
+<input class="vh" type="file" id="pick" accept="application/pdf,.pdf" multiple>
+<b>Solte os PDFs aqui ou clique para escolher</b>
+<span>Pode ser mais de um arquivo por vez.</span>
+</label>
+
+<section>
+<label class="f" for="tpl">Modelo do nome</label>
+<input type="text" id="tpl" value="{nfe}" spellcheck="false" autocomplete="off">
+<div class="chips" id="chips"></div>
+<p class="hint">Clique para inserir um campo no modelo. O que não for encontrado no PDF fica de fora do nome.</p>
+</section>
+
+<section>
+<label class="f" for="lab">Campo personalizado: texto depois de</label>
+<input type="text" id="lab" placeholder="Ex.: Pedido:" spellcheck="false" autocomplete="off">
+<p class="hint">Use {campo} no modelo para inserir o que vier depois desse rótulo no PDF.</p>
+</section>
+
+<section id="files" hidden>
+<div class="head">
+<h2 id="cnt"></h2>
+<div class="acts"><button id="clr">Limpar lista</button><button class="pri" id="zip" disabled>Baixar tudo (.zip)</button></div>
+</div>
+<p class="hint" id="msg" role="status"></p>
+<ul id="list"></ul>
+</section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tpl = $('#tpl'), lab = $('#lab'), list = $('#list'), msg = $('#msg');
+let items = [], uid = 0, dl = null, dlDone = false, busy = false;
+
+try { const s = localStorage.getItem('tpl2'); if (s) tpl.value = s; } catch (e) {}
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+dl = { save: async ({ filename, data }) => {
+  const url = URL.createObjectURL(data), a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+} };
+dlDone = true;
+
+const CHIPS = [['nfe','NFe'],['data','Data'],['cnpj','CNPJ'],['nota','Nº da nota'],['titulo','Título'],['campo','Campo'],['original','Nome original'],['n','Sequência']];
+$('#chips').innerHTML = CHIPS.map(([k, t]) => `<button type="button" data-k="${k}">${t}</button>`).join('');
+$('#chips').addEventListener('click', e => {
+  const k = e.target.dataset.k; if (!k) return;
+  const a = tpl.selectionStart ?? tpl.value.length, b = tpl.selectionEnd ?? a;
+  tpl.value = tpl.value.slice(0, a) + '{' + k + '}' + tpl.value.slice(b);
+  const p = a + k.length + 2; tpl.focus(); tpl.setSelectionRange(p, p); onTpl();
+});
+
+async function extract(file) {
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  let text = '';
+  for (let p = 1; p <= Math.min(pdf.numPages, 2); p++) {
+    const c = await (await pdf.getPage(p)).getTextContent();
+    let last = null, line = '';
+    for (const it of c.items) {
+      const y = it.transform[5];
+      if (last !== null && Math.abs(y - last) > 2) { text += line.replace(/[ \t]+/g, ' ').trim() + '\n'; line = ''; }
+      line += it.str + ' '; last = y;
+    }
+    text += line.replace(/[ \t]+/g, ' ').trim() + '\n';
+  }
+  return text;
+}
+
+function fields(text, label) {
+  const f = {};
+  let m = text.match(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/);
+  f.cnpj = m ? m[0].replace(/\D/g, '') : '';
+  m = text.match(/(?:NFS-?e|NF-?e|nota fiscal[^\n\d]{0,40}|n[úu]mero(?: da nota)?|n[º°]\.?)\s*[:\-]?\s*(\d[\d.]{0,14})/i);
+  f.nota = m ? m[1].replace(/\D/g, '') : '';
+  f.nfe = f.nota;
+  m = text.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  f.data = m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+  f.titulo = (text.split('\n').map(l => l.trim()).find(l => l.length >= 3) || '').slice(0, 60);
+  f.campo = '';
+  if (label) {
+    m = text.match(new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*:?\\s*([^\\n]+)', 'i'));
+    if (m) f.campo = m[1].trim().slice(0, 40);
+  }
+  return f;
+}
+
+const base = n => n.replace(/\.pdf$/i, '');
+const clean = s => s.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '').replace(/\s+/g, ' ')
+  .replace(/(\s*-\s*){2,}/g, ' - ').replace(/^[\s.\-–]+|[\s.\-–]+$/g, '').slice(0, 120);
+
+function build(it, t, i) {
+  const miss = [];
+  const out = t.replace(/\{(\w+)\}/g, (_, k) => {
+    const v = k === 'original' ? base(it.name) : k === 'n' ? String(i + 1).padStart(3, '0') : it.f[k];
+    if (!v) { miss.push(k); return ''; }
+    return v;
+  });
+  return { name: clean(out) || clean(base(it.name)), miss };
+}
+
+function compute() {
+  const seen = {};
+  items.forEach((it, i) => {
+    let name = clean(base(it.name)), miss = [];
+    if (it.state === 'ok') {
+      it.f = Object.assign(fields(it.text, lab.value.trim()), it.ocr || {});
+      const r = build(it, tpl.value, i); name = r.name; miss = r.miss;
+    }
+    if (it.manual) name = clean(it.manual) || name;
+    const k = name.toLowerCase();
+    seen[k] = (seen[k] || 0) + 1;
+    it.final = seen[k] > 1 ? `${name} (${seen[k]})` : name;
+    it.miss = miss;
+  });
+}
+
+function status(it) {
+  if (it.state === 'loading') return [it.ocring ? 'Lendo o número no cabeçalho com o Claude… Pode levar alguns segundos.' : 'Lendo…', ''];
+  if (it.state === 'err') return ['Não consegui ler este PDF.', 'warn'];
+  if (!it.text.trim() && !it.ocr) return [it.ocrErr || 'PDF escaneado sem texto. Renomeie à mão.', 'warn'];
+  if (it.miss.length) return ['Não encontrei: ' + it.miss.join(', ') + '.', 'warn'];
+  return [it.ocr ? 'Número lido da imagem do cabeçalho. Confira antes de baixar.' : 'Todos os campos encontrados.', 'ok'];
+}
+
+function render() {
+  compute();
+  $('#files').hidden = !items.length;
+  $('#cnt').textContent = items.length === 1 ? '1 arquivo' : items.length + ' arquivos';
+  $('#zip').disabled = !dl || !items.length || items.some(i => i.state === 'loading');
+  if (dlDone && !dl) msg.textContent = 'O download não está disponível nesta visualização.';
+  list.innerHTML = items.map(it => {
+    const [s, c] = status(it);
+    return `<li class="row" data-id="${it.id}">
+<div class="old">${esc(it.name)}</div>${it.thumb ? `<img class="thumb" src="${it.thumb}" alt="Trecho do cabeçalho enviado para leitura">` : ''}
+<div class="line"><input type="text" class="new" value="${esc(it.final)}" aria-label="Novo nome de ${esc(it.name)}" spellcheck="false"><span class="ext">.pdf</span></div>
+<div class="st ${c}">${esc(s)}</div>
+<div class="acts"><button data-act="dl"${dl && it.state !== 'loading' ? '' : ' disabled'}>Baixar este</button><button data-act="rm">Remover</button>
+${it.text ? `<details><summary>Texto lido</summary><pre>${esc(it.text.slice(0, 600))}</pre></details>` : ''}</div>
+</li>`;
+  }).join('');
+}
+
+async function add(fl) {
+  const fs = [...fl].filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf');
+  fs.forEach(f => items.push({ id: ++uid, file: f, name: f.name, state: 'loading' }));
+  if (!fs.length) { msg.textContent = 'Só arquivos PDF são aceitos.'; $('#files').hidden = !items.length; return; }
+  msg.textContent = ''; render();
+  if (busy) return; busy = true;
+  let it;
+  while ((it = items.find(x => x.state === 'loading'))) {
+    try {
+      it.text = await extract(it.file);
+      if (!it.text.trim()) {
+        try { it.ocring = true; render(); it.ocr = await readHeader(it); }
+        catch (e) { const c = e && e.code; it.ocrErr = c === 'not_granted' ? 'Senha incorreta. Recarregue a página e tente de novo.' : c === 'unavailable' ? 'A leitura por IA não está disponível nesta visualização. Digite o número no campo acima.' : c === 'http_404' ? 'A função de leitura (/api/ler-cabecalho) não foi encontrada no servidor. Confira se a pasta api está na raiz do repositório e faça um novo deploy.' : c === 'rate_limited' ? 'Limite de leituras atingido; tente de novo daqui a pouco.' : 'Falha ao ler a imagem (' + (c || 'erro') + (e && e.message ? ': ' + e.message : '') + '). Digite o número no campo acima.'; }
+        it.ocring = false;
+      }
+      it.state = 'ok';
+    } catch (e) { it.state = 'err'; }
+    render();
+  }
+  busy = false;
+}
+
+async function senha() {
+  let v = '';
+  try { v = sessionStorage.getItem('senha') || ''; } catch (e) {}
+  if (!v) { v = prompt('Senha de acesso do app:') || ''; try { sessionStorage.setItem('senha', v); } catch (e) {} }
+  return v;
+}
+async function readHeader(it) {
+  const file = it.file;
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const page = await pdf.getPage(1);
+  const vp = page.getViewport({ scale: 3 });
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(vp.width * 0.65); cv.height = Math.round(vp.height * 0.15);
+  await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+  it.thumb = cv.toDataURL('image/jpeg', 0.6); render();
+  const b64 = cv.toDataURL('image/jpeg', 0.9).split(',')[1];
+  const resp = await fetch('/api/ler-cabecalho', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-app-password': await senha() }, body: JSON.stringify({ image: b64 }) });
+  if (resp.status === 401) { try { sessionStorage.removeItem('senha'); } catch (e) {} throw { code: 'not_granted' }; }
+  if (resp.status === 429) throw { code: 'rate_limited' };
+  if (!resp.ok) { let m = ''; try { m = (await resp.json()).error || ''; } catch (e) {} throw { code: 'http_' + resp.status, message: m }; }
+  const r = await resp.json();
+  const m = String(r.data || '').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  return { nfe: String(r.nfe || '').replace(/\D/g, ''), data: m ? `${m[3]}-${m[2]}-${m[1]}` : '' };
+}
+
+async function save(filename, data) {
+  try { await dl.save({ filename, data }); msg.textContent = ''; }
+  catch (e) { if (!e || e.code !== 'declined') msg.textContent = 'Não foi possível baixar: ' + ((e && (e.message || e.code)) || 'erro desconhecido'); }
+}
+
+const onTpl = () => { try { localStorage.setItem('tpl2', tpl.value); } catch (e) {} render(); };
+tpl.addEventListener('input', onTpl);
+lab.addEventListener('input', render);
+$('#pick').addEventListener('change', e => { add(e.target.files); e.target.value = ''; });
+const drop = $('#drop');
+['dragenter', 'dragover'].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => add(e.dataTransfer.files));
+
+list.addEventListener('input', e => {
+  const li = e.target.closest('.row'); if (!li || !e.target.classList.contains('new')) return;
+  items.find(x => x.id == li.dataset.id).manual = e.target.value;
+});
+list.addEventListener('change', e => { if (e.target.classList.contains('new')) render(); });
+list.addEventListener('click', e => {
+  const act = e.target.dataset.act, li = e.target.closest('.row'); if (!act || !li) return;
+  const it = items.find(x => x.id == li.dataset.id);
+  if (act === 'rm') { items = items.filter(x => x !== it); render(); }
+  if (act === 'dl' && dl) save(it.final + '.pdf', it.file);
+});
+$('#clr').addEventListener('click', () => { items = []; msg.textContent = ''; render(); });
+$('#zip').addEventListener('click', async () => {
+  if (!dl) return;
+  msg.textContent = 'Montando o .zip…';
+  try {
+    const zip = new JSZip();
+    items.forEach(it => zip.file(it.final + '.pdf', it.file));
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+    await save('pdfs-renomeados.zip', blob);
+  } catch (e) { msg.textContent = 'Não consegui montar o .zip.'; }
+});
+</script>
+</body>
+</html>
