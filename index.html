@@ -239,7 +239,7 @@ async function readHeader(it) {
   const resp = await fetch('/api/ler-cabecalho', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-app-password': await senha() }, body: JSON.stringify({ image: b64 }) });
   if (resp.status === 401) { try { sessionStorage.removeItem('senha'); } catch (e) {} throw { code: 'not_granted' }; }
   if (resp.status === 429) throw { code: 'rate_limited' };
-  if (!resp.ok) { let m = ''; try { m = await resp.text(); try { m = JSON.parse(m).error || m; } catch (e) {} } catch (e) {} throw { code: 'http_' + resp.status, message: String(m).replace(/\s+/g, ' ').slice(0, 160) }; }
+  if (!resp.ok) { let m = ''; try { m = (await resp.json()).error || ''; } catch (e) {} throw { code: 'http_' + resp.status, message: m }; }
   const r = await resp.json();
   const m = String(r.data || '').match(/(\d{2})\/(\d{2})\/(\d{4})/);
   return { nfe: String(r.nfe || '').replace(/\D/g, ''), data: m ? `${m[3]}-${m[2]}-${m[1]}` : '' };
